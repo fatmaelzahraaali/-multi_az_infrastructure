@@ -1,0 +1,39 @@
+name: Deploy Infrastructure and Configure Docker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Initialize Terraform
+        run: terraform init
+
+      - name: Apply Terraform
+        run: terraform apply -auto-approve
+
+  ansible:
+    name: Run Ansible Playbook
+    runs-on: ubuntu-latest
+    needs: terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Ansible
+        run: sudo apt-get install -y ansible
+
+      - name: Run Ansible Playbook
+        run: ansible-playbook workspaces/dev/playbook.yml

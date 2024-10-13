@@ -1,9 +1,9 @@
-variable "launch_config_name" {}
-variable "image_id" {}
-variable "instance_type" {}
-variable "security_group_id" {}
-variable "key_name" {}
-variable "min_size" {}
-variable "max_size" {}
-variable "desired_capacity" {}
-variable "private_subnets" {}
+# variable "launch_config_name" {}
+# variable "image_id" {}
+# variable "instance_type" {}
+# variable "security_group_id" {}
+# variable "key_name" {}
+# variable "min_size" {}
+# variable "max_size" {}
+# variable "desired_capacity" {}
+# variable "private_subnets" {}

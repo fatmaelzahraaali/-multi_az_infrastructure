@@ -16,25 +16,28 @@ module "vpc" {
 
 module "bastion" {
   source = "./modules/bastion"
-  ami = "ami-0c55b159cbfafe1f0"
+  ami = "ami-0e86e20dae9224db8"
   instance_type = "t2.micro"
-  subnet_id = module.vpc.public_subnets[0]
+  subnet_id_az1= module.vpc.public_subnets[0]
+  subnet_id_az2= module.vpc.public_subnets[1]
   security_group_id = aws_security_group.bastion_sg.id
   key_name = var.key_name
+
 }
 
-module "autoscaling" {
-  source = "./modules/autoscaling"
-  launch_config_name = "nginx-launch-config"
-  image_id = "ami-0c55b159cbfafe1f0"
-  instance_type = "t2.micro"
-  security_group_id = aws_security_group.private_sg.id
-  key_name = var.key_name
-  min_size = 2
-  max_size = 2
-  desired_capacity = 2
-  private_subnets = module.vpc.private_subnets
-}
+
+# module "autoscaling" {
+#   source = "./modules/autoscaling"
+#   launch_config_name = "nginx-launch-config"
+#   image_id = "ami-0e86e20dae9224db8"
+#   instance_type = "t2.micro"
+#   security_group_id = aws_security_group.private_sg.id
+#   key_name = var.key_name
+#   min_size = 2
+#   max_size = 2
+#   desired_capacity = 2
+#   private_subnets = module.vpc.private_subnets
+# }
 
 resource "aws_security_group" "bastion_sg" {
   name = "bastion-sg"
@@ -44,7 +47,7 @@ resource "aws_security_group" "bastion_sg" {
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = [var.allowed_ips]
+    cidr_blocks = var.allowed_ips
   }
 
   egress {
@@ -63,7 +66,7 @@ resource "aws_security_group" "private_sg" {
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.bastion_sg.id]
   }
 
   egress {
@@ -74,16 +77,36 @@ resource "aws_security_group" "private_sg" {
   }
 }
 
-resource "local_file" "ansible_inventory" {
-  content = templatefile("${path.module}/templates/inventory.tpl", {
-    private_ips = module.autoscaling.private_ips
-  })
-  filename = "${path.module}/ansible/workspaces/dev/inventory.ini"
+# Private EC2 Instance in AZ1
+resource "aws_instance" "private_instance_az1" {
+  ami           = "ami-0e86e20dae9224db8"
+  instance_type = "t2.micro"
+  subnet_id    = module.vpc.private_subnets[1]
+  key_name      = "terraform-ansible"
+  security_groups = [aws_security_group.private_sg.id]
+
+  tags = {
+    Name = "private-instance-az1"
+  }
+}
+# Private EC2 Instance in AZ2
+resource "aws_instance" "private_instance_az2" {
+  ami           = "ami-0e86e20dae9224db8"
+  instance_type = "t2.micro"
+  subnet_id    = module.vpc.private_subnets[1]
+  key_name      = "terraform-ansible"
+  security_groups = [aws_security_group.private_sg.id]
+
+  tags = {
+    Name = "private-instance-az2"
+  }
 }
 
-output "load_balancer_dns" {
-  value = aws_lb.nginx_lb.dns_name
-}
-output "private_instance_ips" {
-  value = module.autoscaling.private_ips
-}
+# resource "local_file" "ansible_inventory" {
+#   content  = templatefile("${path.module}/templates/inventory.tpl", {
+#     private_ips =module.autoscaling.asg_instance_ips
+#   })
+#   filename = "${path.module}/ansible/workspaces/dev/inventory.ini"
+# }
+
+
